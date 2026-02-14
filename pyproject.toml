@@ -23,6 +23,7 @@ dependencies = [
     "torchvision>=0.16",
     "tqdm>=4.66",
     "Pillow>=10.0",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
