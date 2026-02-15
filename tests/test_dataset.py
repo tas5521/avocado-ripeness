@@ -8,14 +8,13 @@ Step 1: AvocadoDatasetの動作確認スクリプト
 - データセットのサイズはいくつか
 """
 
-from src.avocado_ripeness.dataset import AvocadoDataset
 import sys
 from pathlib import Path
 
-# プロジェクトルートをPythonパスに追加
-# これにより、src.avocado_ripenessからインポートできるようになります
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+from src.avocado_ripeness.dataset import AvocadoDataset  # noqa: E402
 
 
 # データパス
