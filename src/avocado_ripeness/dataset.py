@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 class AvocadoDataset(Dataset):
     def __init__(self, root_dir, transform=None):
         """
-        root_dir: train / val / test のディレクトリ
+        root_dir: train / valid / test のディレクトリ
         transform: torchvision.transforms
         """
         self.root_dir = Path(root_dir)
