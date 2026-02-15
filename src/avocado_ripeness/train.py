@@ -2,8 +2,10 @@
 訓練ロジックモジュール
 
 1エポック分の訓練ループ。
+バリデーションループ。
 """
 
+import torch
 from tqdm import tqdm
 
 from .utils import calculate_accuracy
@@ -66,6 +68,70 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device):
             'loss': f'{loss.item():.4f}',
             'acc': f'{accuracy:.4f}'
         })
+
+    # 平均を計算
+    avg_loss = running_loss / num_batches
+    avg_accuracy = running_accuracy / num_batches
+
+    return {
+        'loss': avg_loss,
+        'accuracy': avg_accuracy
+    }
+
+
+def validate_one_epoch(model, dataloader, criterion, device):
+    """
+    1エポック分のバリデーションを実行する
+
+    Args:
+        model: 評価するモデル
+        dataloader: バリデーションデータのDataLoader
+        criterion: 損失関数
+        device: 使用するデバイス
+
+    Returns:
+        dict: バリデーション結果（平均損失、平均Accuracy）
+
+    注意:
+        バリデーションでは勾配計算とパラメータ更新は行わない。
+        model.eval()とtorch.no_grad()を使用する。
+    """
+    # モデルを評価モードに設定
+    model.eval()
+
+    # 累積用の変数
+    running_loss = 0.0
+    running_accuracy = 0.0
+    num_batches = 0
+
+    # プログレスバーを作成
+    pbar = tqdm(dataloader, desc="Validation")
+
+    # 勾配計算を無効化（メモリ節約と速度向上）
+    with torch.no_grad():
+        # 各バッチを処理
+        for images, labels in pbar:
+            # デバイスに移動
+            images = images.to(device)
+            labels = labels.to(device)
+
+            # 順伝播（forward pass）のみ
+            outputs = model(images)
+
+            # 損失を計算
+            loss = criterion(outputs, labels)
+
+            # 統計を更新
+            running_loss += loss.item()
+            accuracy = calculate_accuracy(outputs, labels)
+            running_accuracy += accuracy
+            num_batches += 1
+
+            # プログレスバーを更新
+            pbar.set_postfix({
+                'loss': f'{loss.item():.4f}',
+                'acc': f'{accuracy:.4f}'
+            })
 
     # 平均を計算
     avg_loss = running_loss / num_batches
