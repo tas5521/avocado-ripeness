@@ -20,12 +20,16 @@ PRETRAINED = True
 
 # 訓練設定
 BATCH_SIZE = 32
-NUM_EPOCHS = 10
+NUM_EPOCHS = 20  # 本番訓練用（Early stoppingで早く終わる可能性あり）
 LEARNING_RATE = 0.001
 NUM_WORKERS = 0  # データ読み込みの並列処理数（0 = メインスレッドのみ）
 
 # 画像設定
 IMAGE_SIZE = 224  # 入力画像サイズ（224x224）
+
+# 過学習対策設定
+USE_DATA_AUGMENTATION = True  # データ拡張を使用するか（デフォルト: True）
+DROPOUT_RATE = 0.3  # ドロップアウト率（0.0-1.0、0.0で無効）
 
 # チェックポイント設定
 CHECKPOINT_DIR = Path("checkpoints")  # チェックポイント保存ディレクトリ

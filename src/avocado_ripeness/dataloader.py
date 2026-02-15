@@ -10,22 +10,52 @@ from torchvision import transforms
 from .dataset import AvocadoDataset
 
 
-def get_train_transforms():
+def get_train_transforms(use_augmentation=True):
     """
-    訓練用のtransformsを返す
+    訓練用のtransformsを返す（データ拡張付き）
+
+    Args:
+        use_augmentation: データ拡張を使用するか（デフォルト: True）
 
     Returns:
         transforms.Compose: 訓練用の画像前処理パイプライン
     """
-    return transforms.Compose([
-        transforms.Resize((224, 224)),  # 224x224にリサイズ
-        transforms.ToTensor(),  # PIL画像をPyTorchテンソルに変換（0-255 → 0.0-1.0）
-    ])
+    if use_augmentation:
+        # データ拡張を使用
+        return transforms.Compose([
+            transforms.Resize((256, 256)),  # 少し大きめにリサイズ
+            transforms.RandomCrop(224),  # ランダムクロップ（224x224）
+            transforms.RandomHorizontalFlip(p=0.5),  # 50%の確率で水平反転
+            transforms.RandomRotation(degrees=15),  # ±15度のランダム回転
+            transforms.ColorJitter(
+                brightness=0.2,  # 明るさを±20%変更
+                contrast=0.2,    # コントラストを±20%変更
+                saturation=0.2,  # 彩度を±20%変更
+                hue=0.1          # 色相を±10%変更
+            ),
+            transforms.ToTensor(),  # PIL画像をPyTorchテンソルに変換（0-255 → 0.0-1.0）
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],  # ImageNetの平均値
+                std=[0.229, 0.224, 0.225]    # ImageNetの標準偏差
+            ),
+        ])
+    else:
+        # データ拡張なし（シンプル版）
+        return transforms.Compose([
+            transforms.Resize((224, 224)),  # 224x224にリサイズ
+            transforms.ToTensor(),  # PIL画像をPyTorchテンソルに変換（0-255 → 0.0-1.0）
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],  # ImageNetの平均値
+                std=[0.229, 0.224, 0.225]    # ImageNetの標準偏差
+            ),
+        ])
 
 
 def get_valid_transforms():
     """
     バリデーション用のtransformsを返す
+
+    バリデーションではデータ拡張は使用しない（評価の一貫性のため）
 
     Returns:
         transforms.Compose: バリデーション用の画像前処理パイプライン
@@ -33,6 +63,10 @@ def get_valid_transforms():
     return transforms.Compose([
         transforms.Resize((224, 224)),  # 224x224にリサイズ
         transforms.ToTensor(),  # PIL画像をPyTorchテンソルに変換
+        transforms.Normalize(
+            mean=[0.485, 0.456, 0.406],  # ImageNetの平均値
+            std=[0.229, 0.224, 0.225]    # ImageNetの標準偏差
+        ),
     ])
 
 
