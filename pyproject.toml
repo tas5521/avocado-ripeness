@@ -35,6 +35,9 @@ dev = [
     "flake8",
     "autopep8",
 ]
+mobile = [
+    "executorch>=1.1.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
