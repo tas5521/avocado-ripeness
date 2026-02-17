@@ -209,3 +209,11 @@ __marimo__/
 .DS_Store
 data/
 checkpoints/
+
+# モデルファイル（チェックポイント、エクスポート済みモデル）
+models/*.pte
+models/*.pt
+models/*.pth
+*.pte
+*.pt
+*.pth
