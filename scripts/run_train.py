@@ -20,7 +20,7 @@ from src.avocado_ripeness.dataloader import (  # noqa: E402
     get_valid_transforms
 )
 from src.avocado_ripeness.train import train_multiple_epochs  # noqa: E402
-from src.avocado_ripeness.utils import get_device  # noqa: E402
+from src.avocado_ripeness.utils import get_device, calculate_class_weights  # noqa: E402
 from src.avocado_ripeness.config import (  # noqa: E402
     TRAIN_DIR,
     VALID_DIR,
@@ -37,7 +37,8 @@ from src.avocado_ripeness.config import (  # noqa: E402
     USE_EARLY_STOPPING,
     EARLY_STOPPING_PATIENCE,
     USE_DATA_AUGMENTATION,
-    DROPOUT_RATE
+    DROPOUT_RATE,
+    USE_CLASS_WEIGHTS
 )
 
 
@@ -64,32 +65,8 @@ def main():
     print("  事前訓練済み: True")
     if DROPOUT_RATE > 0:
         print(f"  ドロップアウト率: {DROPOUT_RATE}")
-    if DROPOUT_RATE > 0:
-        print(f"  ドロップアウト率: {DROPOUT_RATE}")
 
-    # 損失関数とオプティマイザーを作成
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    print("\n損失関数: CrossEntropyLoss")
-    print("オプティマイザー: Adam")
-    print(f"学習率: {LEARNING_RATE}")
-
-    # 学習率スケジューラーを作成
-    scheduler = None
-    if USE_SCHEDULER:
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer,
-            mode='min',
-            factor=SCHEDULER_FACTOR,
-            patience=SCHEDULER_PATIENCE,
-            min_lr=SCHEDULER_MIN_LR
-        )
-        print("\n学習率スケジューラー: 有効")
-        print(f"  factor: {SCHEDULER_FACTOR}")
-        print(f"  patience: {SCHEDULER_PATIENCE}")
-        print(f"  min_lr: {SCHEDULER_MIN_LR}")
-
-    # データローダーを作成
+    # データローダーを作成（損失関数より先に作成し、クラス重み計算に使う）
     print("\nデータローダーを作成中...")
     train_transform = get_train_transforms(use_augmentation=USE_DATA_AUGMENTATION)
     valid_transform = get_valid_transforms()
@@ -118,6 +95,42 @@ def main():
     print(f"  訓練データセットサイズ: {len(train_dataloader.dataset)}")
     print(f"  バリデーションデータセットサイズ: {len(valid_dataloader.dataset)}")
     print(f"  バッチサイズ: {BATCH_SIZE}")
+
+    # 損失関数を作成（クラス重み付けあり/なし）
+    if USE_CLASS_WEIGHTS:
+        class_weights = calculate_class_weights(
+            train_dataloader.dataset, NUM_CLASSES
+        )
+        class_weights = class_weights.to(device)
+        criterion = nn.CrossEntropyLoss(weight=class_weights)
+        print("\n損失関数: CrossEntropyLoss（クラス重み付き）")
+        print("  クラス重み:")
+        class_names = ["未熟(1)", "やや未熟(2)", "適熟(3)", "やや過熟(4)", "過熟(5)"]
+        for (name, w) in zip(class_names, class_weights):
+            print(f"    {name}: {w:.4f}")
+    else:
+        criterion = nn.CrossEntropyLoss()
+        print("\n損失関数: CrossEntropyLoss")
+
+    # オプティマイザーを作成
+    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    print("オプティマイザー: Adam")
+    print(f"学習率: {LEARNING_RATE}")
+
+    # 学習率スケジューラーを作成
+    scheduler = None
+    if USE_SCHEDULER:
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode='min',
+            factor=SCHEDULER_FACTOR,
+            patience=SCHEDULER_PATIENCE,
+            min_lr=SCHEDULER_MIN_LR
+        )
+        print("\n学習率スケジューラー: 有効")
+        print(f"  factor: {SCHEDULER_FACTOR}")
+        print(f"  patience: {SCHEDULER_PATIENCE}")
+        print(f"  min_lr: {SCHEDULER_MIN_LR}")
 
     # Early stoppingの設定
     early_stopping_patience = None
