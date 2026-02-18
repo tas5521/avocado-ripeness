@@ -5,6 +5,7 @@
 """
 
 import torch
+from collections import Counter
 
 
 def get_device():
@@ -43,3 +44,29 @@ def calculate_accuracy(outputs, labels):
     accuracy = correct / len(labels)
 
     return accuracy
+
+
+def calculate_class_weights(dataset, num_classes):
+    """
+    データセットのクラス分布から逆頻度重みを計算する
+
+    少数クラスほど大きい重み、多数クラスほど小さい重みになる。
+    重みの合計がクラス数になるように正規化する。
+
+    Args:
+        dataset: AvocadoDataset（targetsプロパティを持つ）
+        num_classes: クラス数
+
+    Returns:
+        torch.Tensor: 各クラスの重み [num_classes]
+    """
+    class_counts = Counter(dataset.targets)
+    total = len(dataset)
+
+    weights = []
+    for i in range(num_classes):
+        count = class_counts.get(i, 1)
+        weight = total / (num_classes * count)
+        weights.append(weight)
+
+    return torch.tensor(weights, dtype=torch.float32)

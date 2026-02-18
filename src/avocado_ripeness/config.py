@@ -31,6 +31,9 @@ IMAGE_SIZE = 224  # 入力画像サイズ（224x224）
 USE_DATA_AUGMENTATION = True  # データ拡張を使用するか（デフォルト: True）
 DROPOUT_RATE = 0.3  # ドロップアウト率（0.0-1.0、0.0で無効）
 
+# クラス重み付け設定
+USE_CLASS_WEIGHTS = True  # 訓練データの分布に基づくクラス重み付けを使用するか
+
 # チェックポイント設定
 CHECKPOINT_DIR = Path("checkpoints")  # チェックポイント保存ディレクトリ
 SAVE_BEST_MODEL = True  # 最良モデルを保存するか

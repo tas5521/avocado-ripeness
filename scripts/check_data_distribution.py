@@ -39,6 +39,7 @@ from src.avocado_ripeness.config import (  # noqa: E402
     TEST_DIR,
     NUM_CLASSES
 )
+from src.avocado_ripeness.utils import calculate_class_weights  # noqa: E402
 
 
 def check_distribution(data_dir, split_name):
@@ -163,6 +164,35 @@ def main():
                 f"{padded} {train_count:>10} {valid_count:>10}"
                 f" {test_count:>10} {total_count:>10}"
             )
+
+
+    # クラス重みを表示（訓練データから計算）
+    if train_dist:
+        print(f"\n{'=' * 60}")
+        print("クラス重み（訓練データから計算）")
+        print(f"{'=' * 60}")
+        print("※ 少数クラスほど大きい重みになります\n")
+
+        train_dataset = AvocadoDataset(TRAIN_DIR, transform=None)
+        weights = calculate_class_weights(train_dataset, NUM_CLASSES)
+
+        class_names = {
+            0: "未熟 (1)",
+            1: "やや未熟 (2)",
+            2: "適熟 (3)",
+            3: "やや過熟 (4)",
+            4: "過熟 (5)"
+        }
+
+        name_width = max(_display_width(n) for n in class_names.values()) + 2
+        header = _pad_right('クラス', name_width)
+        print(f"{header} {'重み':>10}")
+        print("-" * 30)
+
+        for i in range(NUM_CLASSES):
+            class_name = class_names.get(i, f"クラス {i}")
+            padded = _pad_right(class_name, name_width)
+            print(f"{padded} {weights[i]:>10.4f}")
 
 
 if __name__ == "__main__":
