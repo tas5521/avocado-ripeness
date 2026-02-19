@@ -7,12 +7,13 @@
 import torch
 from PIL import Image
 
-from .model import EfficientNetB0Model
+from .model import EfficientNetB0Model, EfficientNetLite0Model, EfficientNetLite1Model
 from .dataloader import get_valid_transforms
 from .utils import get_device
+from .config import MODEL_NAME
 
 
-def load_model_from_checkpoint(checkpoint_path, num_classes=5, device=None, dropout_rate=0.3):
+def load_model_from_checkpoint(checkpoint_path, num_classes=5, device=None, dropout_rate=0.3, model_name=None):
     """
     チェックポイントからモデルを読み込む
 
@@ -21,6 +22,7 @@ def load_model_from_checkpoint(checkpoint_path, num_classes=5, device=None, drop
         num_classes: クラス数（デフォルト: 5）
         device: 使用するデバイス（Noneの場合は自動選択）
         dropout_rate: ドロップアウト率（チェックポイント保存時の設定に合わせる）
+        model_name: モデル名（Noneの場合はconfigから読み取る）
 
     Returns:
         model: 読み込んだモデル（評価モード）
@@ -28,12 +30,33 @@ def load_model_from_checkpoint(checkpoint_path, num_classes=5, device=None, drop
     if device is None:
         device = get_device()
 
+    if model_name is None:
+        model_name = MODEL_NAME
+
     # モデルを作成
-    model = EfficientNetB0Model(
-        num_classes=num_classes,
-        pretrained=False,  # チェックポイントから読み込むのでFalse
-        dropout_rate=dropout_rate
-    )
+    if model_name == "efficientnet_lite0":
+        model = EfficientNetLite0Model(
+            num_classes=num_classes,
+            pretrained=False,  # チェックポイントから読み込むのでFalse
+            dropout_rate=dropout_rate
+        )
+    elif model_name == "efficientnet_lite1":
+        model = EfficientNetLite1Model(
+            num_classes=num_classes,
+            pretrained=False,  # チェックポイントから読み込むのでFalse
+            dropout_rate=dropout_rate
+        )
+    elif model_name == "efficientnet_b0":
+        model = EfficientNetB0Model(
+            num_classes=num_classes,
+            pretrained=False,  # チェックポイントから読み込むのでFalse
+            dropout_rate=dropout_rate
+        )
+    else:
+        raise ValueError(
+            f"不明なモデル名: {model_name}。"
+            f"サポートされているモデル: 'efficientnet_b0', 'efficientnet_lite0', 'efficientnet_lite1'"
+        )
 
     # チェックポイントを読み込む
     checkpoint = torch.load(checkpoint_path, map_location=device)

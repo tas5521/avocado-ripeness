@@ -13,7 +13,11 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.avocado_ripeness.model import EfficientNetB0Model  # noqa: E402
+from src.avocado_ripeness.model import (  # noqa: E402
+    EfficientNetB0Model,
+    EfficientNetLite0Model,
+    EfficientNetLite1Model
+)
 from src.avocado_ripeness.dataloader import (  # noqa: E402
     create_dataloader,
     get_train_transforms,
@@ -38,7 +42,9 @@ from src.avocado_ripeness.config import (  # noqa: E402
     EARLY_STOPPING_PATIENCE,
     USE_DATA_AUGMENTATION,
     DROPOUT_RATE,
-    USE_CLASS_WEIGHTS
+    USE_CLASS_WEIGHTS,
+    MODEL_NAME,
+    PRETRAINED
 )
 
 
@@ -54,15 +60,37 @@ def main():
 
     # モデルを作成
     print("\nモデルを作成中...")
-    model = EfficientNetB0Model(
-        num_classes=NUM_CLASSES,
-        pretrained=True,
-        dropout_rate=DROPOUT_RATE
-    )
+    if MODEL_NAME == "efficientnet_lite0":
+        model = EfficientNetLite0Model(
+            num_classes=NUM_CLASSES,
+            pretrained=PRETRAINED,
+            dropout_rate=DROPOUT_RATE
+        )
+        model_display_name = "EfficientNet-Lite0"
+    elif MODEL_NAME == "efficientnet_lite1":
+        model = EfficientNetLite1Model(
+            num_classes=NUM_CLASSES,
+            pretrained=PRETRAINED,
+            dropout_rate=DROPOUT_RATE
+        )
+        model_display_name = "EfficientNet-Lite1"
+    elif MODEL_NAME == "efficientnet_b0":
+        model = EfficientNetB0Model(
+            num_classes=NUM_CLASSES,
+            pretrained=PRETRAINED,
+            dropout_rate=DROPOUT_RATE
+        )
+        model_display_name = "EfficientNet-B0"
+    else:
+        raise ValueError(
+            f"不明なモデル名: {MODEL_NAME}。"
+            f"サポートされているモデル: 'efficientnet_b0', 'efficientnet_lite0', 'efficientnet_lite1'"
+        )
+
     model = model.to(device)
-    print("  モデル: EfficientNet-B0")
+    print(f"  モデル: {model_display_name}")
     print(f"  クラス数: {NUM_CLASSES}")
-    print("  事前訓練済み: True")
+    print(f"  事前訓練済み: {PRETRAINED}")
     if DROPOUT_RATE > 0:
         print(f"  ドロップアウト率: {DROPOUT_RATE}")
 

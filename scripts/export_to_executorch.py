@@ -13,13 +13,155 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from src.avocado_ripeness.model import EfficientNetB0Model  # noqa: E402
+from src.avocado_ripeness.model import (  # noqa: E402
+    EfficientNetB0Model,
+    EfficientNetLite0Model,
+    EfficientNetLite1Model
+)
 from src.avocado_ripeness.config import (  # noqa: E402
     CHECKPOINT_DIR,
     NUM_CLASSES,
     DROPOUT_RATE,
-    IMAGE_SIZE
+    IMAGE_SIZE,
+    MODEL_NAME
 )
+
+
+def _create_model(model_name, num_classes, dropout_rate):
+    """
+    モデルを作成する
+
+    Args:
+        model_name: モデル名
+        num_classes: クラス数
+        dropout_rate: ドロップアウト率
+
+    Returns:
+        作成されたモデル
+    """
+    print("\nモデルを作成中...")
+    if model_name == "efficientnet_lite0":
+        model = EfficientNetLite0Model(
+            num_classes=num_classes,
+            pretrained=False,
+            dropout_rate=dropout_rate
+        )
+        print("  モデル: EfficientNet-Lite0")
+    elif model_name == "efficientnet_lite1":
+        model = EfficientNetLite1Model(
+            num_classes=num_classes,
+            pretrained=False,
+            dropout_rate=dropout_rate
+        )
+        print("  モデル: EfficientNet-Lite1")
+    elif model_name == "efficientnet_b0":
+        model = EfficientNetB0Model(
+            num_classes=num_classes,
+            pretrained=False,
+            dropout_rate=dropout_rate
+        )
+        print("  モデル: EfficientNet-B0")
+    else:
+        raise ValueError(
+            f"不明なモデル名: {model_name}。"
+            f"サポートされているモデル: 'efficientnet_b0', 'efficientnet_lite0', 'efficientnet_lite1'"
+        )
+    return model
+
+
+def _load_checkpoint(model, checkpoint_path, device):
+    """
+    チェックポイントからモデルを読み込む
+
+    Args:
+        model: モデルインスタンス
+        checkpoint_path: チェックポイントファイルのパス
+        device: デバイス
+    """
+    print("チェックポイントを読み込み中...")
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+    model = model.to(device)
+    print("✓ モデルの読み込み完了")
+
+
+def _export_with_torch_export(model, dummy_input, output_path):
+    """
+    torch.exportを使用してモデルをエクスポートする
+
+    Args:
+        model: モデルインスタンス
+        dummy_input: ダミー入力
+        output_path: 出力ファイルのパス
+
+    Returns:
+        ExportedProgramまたはNone（失敗時）
+    """
+    print("\ntorch.exportでエクスポート中...")
+    try:
+        exported_program = torch.export.export(model, (dummy_input,))
+        print("✓ torch.export完了")
+        return exported_program
+    except Exception as e:
+        print(f"✗ torch.exportエラー: {e}")
+        print("\n注意: PyTorch 2.1以降が必要です。")
+        print("torch.exportの代わりにtorch.jit.traceを使用します...")
+        _fallback_to_torchscript(model, dummy_input, output_path)
+        return None
+
+
+def _fallback_to_torchscript(model, dummy_input, output_path):
+    """
+    torch.jit.traceを使用してフォールバック（Executorchには変換できない）
+
+    Args:
+        model: モデルインスタンス
+        dummy_input: ダミー入力
+        output_path: 出力ファイルのパス
+    """
+    traced_model = torch.jit.trace(model, dummy_input)
+    traced_model.eval()
+    print("\n注意: torch.jit.traceからは直接Executorchに変換できません")
+    print("torch.exportが使用できない場合は、PyTorch 2.1以降が必要です")
+    jit_output = output_path.replace('.pte', '.pt')
+    traced_model.save(jit_output)
+    print(f"✓ TorchScript形式で保存: {jit_output}")
+    print("  注意: これはExecutorch形式ではありません")
+
+
+def _convert_to_executorch(exported_program, output_path):
+    """
+    ExportedProgramをExecutorch形式に変換する
+
+    Args:
+        exported_program: torch.exportでエクスポートされたプログラム
+        output_path: 出力ファイルのパス
+    """
+    print("\nexecutorchで変換中...")
+    try:
+        from executorch.exir import to_edge
+
+        edge_program = to_edge(exported_program)
+        executorch_program = edge_program.to_executorch()
+
+        output_path = Path(output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output_path, "wb") as f:
+            f.write(executorch_program.buffer)
+
+        print(f"✓ Executorch形式で保存完了: {output_path}")
+        print(f"\nファイルサイズ: {output_path.stat().st_size / (1024*1024):.2f} MB")
+    except ImportError:
+        print("\n✗ executorchがインストールされていません")
+        print("\nインストール方法:")
+        print("  pip install executorch")
+        print("\nまたは、torch.export形式で保存しますか？")
+        export_output = output_path.replace('.pte', '_exported.pt')
+        torch.save(exported_program, export_output)
+        print(f"✓ torch.export形式で保存: {export_output}")
+        print("  注意: これはExecutorch形式ではありません")
 
 
 def export_to_executorch(
@@ -27,7 +169,8 @@ def export_to_executorch(
     output_path,
     num_classes=5,
     dropout_rate=0.3,
-    image_size=224
+    image_size=224,
+    model_name=None
 ):
     """
     モデルをExecutorch形式にエクスポートする
@@ -38,6 +181,7 @@ def export_to_executorch(
         num_classes: クラス数
         dropout_rate: ドロップアウト率
         image_size: 入力画像サイズ
+        model_name: モデル名（Noneの場合はconfigから読み取る）
     """
     print("=" * 60)
     print("Executorchへの変換")
@@ -46,99 +190,19 @@ def export_to_executorch(
     print(f"出力先: {output_path}")
     print(f"入力サイズ: {image_size}x{image_size}")
 
-    # デバイスを設定（CPUでエクスポート）
+    if model_name is None:
+        model_name = MODEL_NAME
+
     device = torch.device("cpu")
+    model = _create_model(model_name, num_classes, dropout_rate)
+    _load_checkpoint(model, checkpoint_path, device)
 
-    # モデルを作成
-    print("\nモデルを作成中...")
-    model = EfficientNetB0Model(
-        num_classes=num_classes,
-        pretrained=False,
-        dropout_rate=dropout_rate
-    )
-
-    # チェックポイントを読み込む
-    print("チェックポイントを読み込み中...")
-    checkpoint = torch.load(checkpoint_path, map_location=device)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    model.eval()
-    model = model.to(device)
-    print("✓ モデルの読み込み完了")
-
-    # ダミー入力を作成（推論時の入力形状に合わせる）
     print(f"\nダミー入力を作成中... (形状: [1, 3, {image_size}, {image_size}])")
     dummy_input = torch.randn(1, 3, image_size, image_size)
 
-    # torch.export を使ってエクスポート
-    print("\ntorch.exportでエクスポート中...")
-    try:
-        exported_program = torch.export.export(model, (dummy_input,))
-        print("✓ torch.export完了")
-    except Exception as e:
-        print(f"✗ torch.exportエラー: {e}")
-        print("\n注意: PyTorch 2.1以降が必要です。")
-        print("torch.exportの代わりにtorch.jit.traceを使用します...")
-
-        # フォールバック: torch.jit.traceを使用
-        traced_model = torch.jit.trace(model, dummy_input)
-        traced_model.eval()
-
-        # Executorchへの変換（executorchが必要）
-        try:
-            # torch.jit.traceからは直接executorchに変換できないため、
-            # torch.exportを使う必要がある
-            print("\n注意: torch.jit.traceからは直接Executorchに変換できません")
-            print("torch.exportが使用できない場合は、PyTorch 2.1以降が必要です")
-            jit_output = output_path.replace('.pte', '.pt')
-            traced_model.save(jit_output)
-            print(f"✓ TorchScript形式で保存: {jit_output}")
-            print("  注意: これはExecutorch形式ではありません")
-            return
-
-            # ファイルに保存
-            with open(output_path, "wb") as f:
-                f.write(executorch_program.buffer)
-            print(f"✓ Executorch形式で保存完了: {output_path}")
-            return
-        except ImportError:
-            print("\n✗ executorchがインストールされていません")
-            print("\nインストール方法:")
-            print("  pip install executorch")
-            print("\nまたは、torch.jit.trace形式で保存しますか？")
-            jit_output = output_path.replace('.pte', '.pt')
-            traced_model.save(jit_output)
-            print(f"✓ TorchScript形式で保存: {jit_output}")
-            print("  注意: これはExecutorch形式ではありません")
-            return
-
-    # Executorchへの変換
-    print("\nexecutorchで変換中...")
-    try:
-        from executorch.exir import to_edge
-
-        # to_edgeの正しい呼び出し方法（ExportedProgramを直接渡す）
-        edge_program = to_edge(exported_program)
-        executorch_program = edge_program.to_executorch()
-
-        # ファイルに保存
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-
-        with open(output_path, "wb") as f:
-            f.write(executorch_program.buffer)
-
-        print(f"✓ Executorch形式で保存完了: {output_path}")
-        print(f"\nファイルサイズ: {output_path.stat().st_size / (1024*1024):.2f} MB")
-
-    except ImportError:
-        print("\n✗ executorchがインストールされていません")
-        print("\nインストール方法:")
-        print("  pip install executorch")
-        print("\nまたは、torch.export形式で保存しますか？")
-        export_output = output_path.replace('.pte', '_exported.pt')
-        torch.save(exported_program, export_output)
-        print(f"✓ torch.export形式で保存: {export_output}")
-        print("  注意: これはExecutorch形式ではありません")
+    exported_program = _export_with_torch_export(model, dummy_input, output_path)
+    if exported_program is not None:
+        _convert_to_executorch(exported_program, output_path)
 
 
 def main():

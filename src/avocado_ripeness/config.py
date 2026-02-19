@@ -15,14 +15,14 @@ TEST_DIR = DATA_DIR / "test"
 
 # モデル設定
 NUM_CLASSES = 5  # アボカドの成熟度クラス数
-MODEL_NAME = "efficientnet_b0"
+MODEL_NAME = "efficientnet_lite0"  # "efficientnet_b0", "efficientnet_lite0", "efficientnet_lite1"
 PRETRAINED = True
 
 # 訓練設定
 BATCH_SIZE = 32
 NUM_EPOCHS = 20  # 本番訓練用（Early stoppingで早く終わる可能性あり）
 LEARNING_RATE = 0.001
-NUM_WORKERS = 0  # データ読み込みの並列処理数（0 = メインスレッドのみ）
+NUM_WORKERS = 2  # データ読み込みの並列処理数（2-4が推奨、MPSでは2が安全）
 
 # 画像設定
 IMAGE_SIZE = 224  # 入力画像サイズ（224x224）
