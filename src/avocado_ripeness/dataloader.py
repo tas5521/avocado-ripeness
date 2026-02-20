@@ -31,7 +31,7 @@ def get_train_transforms(use_augmentation=True):
             transforms.RandomHorizontalFlip(p=0.5),  # 50%の確率で水平反転
             transforms.RandomRotation(degrees=15),  # ±15度のランダム回転
             transforms.ColorJitter(
-                brightness=0.2,  # 明るさを±20%変更
+                brightness=0.5,  # 明るさを±50%変更（照明変動への耐性強化）
                 contrast=0.2,    # コントラストを±20%変更
                 saturation=0.2,  # 彩度を±20%変更
                 hue=0.1          # 色相を±10%変更
