@@ -35,14 +35,26 @@ from src.avocado_ripeness.config import (  # noqa: E402
 from src.avocado_ripeness.utils import get_device  # noqa: E402
 
 
-# クラス名の定義（成熟度のラベル）
-CLASS_NAMES = {
+CLASS_NAMES_5 = {
     0: "未熟 (Unripe)",
     1: "やや未熟 (Slightly Unripe)",
     2: "適熟 (Ripe)",
     3: "やや過熟 (Slightly Overripe)",
     4: "過熟 (Overripe)"
 }
+
+CLASS_NAMES_3 = {
+    0: "未熟 (Unripe)",
+    1: "適熟 (Ripe)",
+    2: "過熟 (Overripe)"
+}
+
+
+def _get_class_names(num_classes):
+    """クラス数に応じたクラス名辞書を返す"""
+    if num_classes == 3:
+        return CLASS_NAMES_3
+    return CLASS_NAMES_5
 
 
 def main():
@@ -114,7 +126,8 @@ def main():
         batch_size=args.batch_size,
         shuffle=False,
         transform=test_transform,
-        num_workers=NUM_WORKERS
+        num_workers=NUM_WORKERS,
+        num_classes=args.num_classes
     )
 
     print(f"  テストデータセットサイズ: {len(test_dataloader.dataset)}")
@@ -144,7 +157,8 @@ def main():
     print(f"テストAccuracy: {results['accuracy']:.4f} ({results['accuracy']*100:.2f}%)")
 
     # Confusion Matrixを表示
-    class_names_list = [CLASS_NAMES[i] for i in range(args.num_classes)]
+    class_names_dict = _get_class_names(args.num_classes)
+    class_names_list = [class_names_dict[i] for i in range(args.num_classes)]
     print_confusion_matrix(results['confusion_matrix'], class_names_list)
 
     # クラスごとの精度指標を表示

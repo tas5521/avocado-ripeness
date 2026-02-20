@@ -42,6 +42,19 @@ from src.avocado_ripeness.config import (  # noqa: E402
 from src.avocado_ripeness.utils import calculate_class_weights  # noqa: E402
 
 
+def _get_class_names(num_classes):
+    """クラス数に応じた表示名を返す"""
+    if num_classes == 3:
+        return {0: "未熟", 1: "適熟", 2: "過熟"}
+    return {
+        0: "未熟 (1)",
+        1: "やや未熟 (2)",
+        2: "適熟 (3)",
+        3: "やや過熟 (4)",
+        4: "過熟 (5)"
+    }
+
+
 def check_distribution(data_dir, split_name):
     """
     データセットの分布を確認する
@@ -62,19 +75,13 @@ def check_distribution(data_dir, split_name):
         return None
 
     # データセットを作成
-    dataset = AvocadoDataset(data_dir, transform=None)
+    dataset = AvocadoDataset(data_dir, transform=None, num_classes=NUM_CLASSES)
 
     # クラスごとのデータ数をカウント
     class_counts = Counter(dataset.targets)
 
-    # クラス名のマッピング（フォルダ名 → 表示名）
-    class_names = {
-        0: "未熟 (1)",
-        1: "やや未熟 (2)",
-        2: "適熟 (3)",
-        3: "やや過熟 (4)",
-        4: "過熟 (5)"
-    }
+    # クラス名のマッピング
+    class_names = _get_class_names(NUM_CLASSES)
 
     # 結果を表示
     total = len(dataset)
@@ -139,13 +146,7 @@ def main():
     print(f"{'=' * 60}")
 
     if train_dist and valid_dist and test_dist:
-        class_names = {
-            0: "未熟 (1)",
-            1: "やや未熟 (2)",
-            2: "適熟 (3)",
-            3: "やや過熟 (4)",
-            4: "過熟 (5)"
-        }
+        class_names = _get_class_names(NUM_CLASSES)
 
         name_width = max(_display_width(n) for n in class_names.values()) + 2
         header = _pad_right('クラス', name_width)
@@ -173,16 +174,10 @@ def main():
         print(f"{'=' * 60}")
         print("※ 少数クラスほど大きい重みになります\n")
 
-        train_dataset = AvocadoDataset(TRAIN_DIR, transform=None)
+        train_dataset = AvocadoDataset(TRAIN_DIR, transform=None, num_classes=NUM_CLASSES)
         weights = calculate_class_weights(train_dataset, NUM_CLASSES)
 
-        class_names = {
-            0: "未熟 (1)",
-            1: "やや未熟 (2)",
-            2: "適熟 (3)",
-            3: "やや過熟 (4)",
-            4: "過熟 (5)"
-        }
+        class_names = _get_class_names(NUM_CLASSES)
 
         name_width = max(_display_width(n) for n in class_names.values()) + 2
         header = _pad_right('クラス', name_width)

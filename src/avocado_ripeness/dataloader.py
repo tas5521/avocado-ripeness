@@ -4,7 +4,10 @@ DataLoaderの作成モジュール
 訓練用とバリデーション用のDataLoaderを作成する関数を提供する。
 """
 
-from torch.utils.data import DataLoader
+from collections import Counter
+
+import torch
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from torchvision import transforms
 
 from .dataset import AvocadoDataset
@@ -70,12 +73,48 @@ def get_valid_transforms():
     ])
 
 
+def _create_weighted_sampler(dataset):
+    """
+    データセットのクラス分布に基づいてWeightedRandomSamplerを作成する
+
+    少数クラスが多数クラスと同じ頻度でサンプリングされるようになる。
+
+    Args:
+        dataset: AvocadoDataset（targetsプロパティを持つ）
+
+    Returns:
+        WeightedRandomSampler
+    """
+    class_counts = Counter(dataset.targets)
+    total = len(dataset)
+    num_classes = len(class_counts)
+
+    # 各クラスの重み（逆頻度）
+    class_weight_map = {}
+    for cls_idx, count in class_counts.items():
+        class_weight_map[cls_idx] = total / (num_classes * count)
+
+    # 各サンプルに対応する重みを割り当て
+    sample_weights = torch.tensor(
+        [class_weight_map[t] for t in dataset.targets],
+        dtype=torch.float64
+    )
+
+    return WeightedRandomSampler(
+        weights=sample_weights,
+        num_samples=total,
+        replacement=True
+    )
+
+
 def create_dataloader(
     data_dir,
     batch_size=32,
     shuffle=True,
     transform=None,
-    num_workers=0
+    num_workers=0,
+    num_classes=5,
+    use_oversampling=False
 ):
     """
     DataLoaderを作成する
@@ -86,19 +125,30 @@ def create_dataloader(
         shuffle (bool): データをシャッフルするか（デフォルト: True）
         transform: 画像の前処理（Noneの場合は適用しない）
         num_workers (int): データ読み込みに使うプロセス数（デフォルト: 0）
+        num_classes (int): 分類クラス数（5: 5段階、3: 3段階）
+        use_oversampling (bool): オーバーサンプリングを使用するか
 
     Returns:
         DataLoader: 作成されたDataLoader
     """
     # データセットを作成
-    dataset = AvocadoDataset(data_dir, transform=transform)
+    dataset = AvocadoDataset(data_dir, transform=transform, num_classes=num_classes)
 
-    # DataLoaderを作成
-    dataloader = DataLoader(
-        dataset,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        num_workers=num_workers
-    )
+    if use_oversampling:
+        # WeightedRandomSamplerを使用（shuffleと併用不可）
+        sampler = _create_weighted_sampler(dataset)
+        dataloader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            sampler=sampler,
+            num_workers=num_workers
+        )
+    else:
+        dataloader = DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=shuffle,
+            num_workers=num_workers
+        )
 
     return dataloader

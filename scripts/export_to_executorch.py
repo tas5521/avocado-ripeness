@@ -257,7 +257,7 @@ def main():
     print("\n次のステップ:")
     print("1. モバイルアプリでExecutorchランタイムを使用して推論")
     print("2. 入力画像は [1, 3, 224, 224] の形状で正規化済みテンソル")
-    print("3. 出力は [1, 5] の形状で各クラスのlogits")
+    print(f"3. 出力は [1, {NUM_CLASSES}] の形状で各クラスのlogits")
 
 
 if __name__ == "__main__":

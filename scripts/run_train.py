@@ -43,6 +43,7 @@ from src.avocado_ripeness.config import (  # noqa: E402
     USE_DATA_AUGMENTATION,
     DROPOUT_RATE,
     USE_CLASS_WEIGHTS,
+    USE_OVERSAMPLING,
     MODEL_NAME,
     PRETRAINED
 )
@@ -107,17 +108,23 @@ def main():
     train_dataloader = create_dataloader(
         data_dir=TRAIN_DIR,
         batch_size=BATCH_SIZE,
-        shuffle=True,
+        shuffle=not USE_OVERSAMPLING,
         transform=train_transform,
-        num_workers=NUM_WORKERS
+        num_workers=NUM_WORKERS,
+        num_classes=NUM_CLASSES,
+        use_oversampling=USE_OVERSAMPLING
     )
+
+    if USE_OVERSAMPLING:
+        print("  オーバーサンプリング: 有効（少数クラスを多めにサンプリング）")
 
     valid_dataloader = create_dataloader(
         data_dir=VALID_DIR,
         batch_size=BATCH_SIZE,
         shuffle=False,
         transform=valid_transform,
-        num_workers=NUM_WORKERS
+        num_workers=NUM_WORKERS,
+        num_classes=NUM_CLASSES
     )
 
     print(f"  訓練データセットサイズ: {len(train_dataloader.dataset)}")
@@ -133,7 +140,10 @@ def main():
         criterion = nn.CrossEntropyLoss(weight=class_weights)
         print("\n損失関数: CrossEntropyLoss（クラス重み付き）")
         print("  クラス重み:")
-        class_names = ["未熟(1)", "やや未熟(2)", "適熟(3)", "やや過熟(4)", "過熟(5)"]
+        if NUM_CLASSES == 3:
+            class_names = ["未熟", "適熟", "過熟"]
+        else:
+            class_names = ["未熟(1)", "やや未熟(2)", "適熟(3)", "やや過熟(4)", "過熟(5)"]
         for (name, w) in zip(class_names, class_weights):
             print(f"    {name}: {w:.4f}")
     else:
