@@ -10,10 +10,10 @@ from PIL import Image
 from .model import EfficientNetB0Model, EfficientNetLite0Model, EfficientNetLite1Model
 from .dataloader import get_valid_transforms
 from .utils import get_device
-from .config import MODEL_NAME
+from .config import MODEL_NAME, NUM_CLASSES
 
 
-def load_model_from_checkpoint(checkpoint_path, num_classes=5, device=None, dropout_rate=0.3, model_name=None):
+def load_model_from_checkpoint(checkpoint_path, num_classes=None, device=None, dropout_rate=0.3, model_name=None):
     """
     チェックポイントからモデルを読み込む
 
@@ -27,6 +27,9 @@ def load_model_from_checkpoint(checkpoint_path, num_classes=5, device=None, drop
     Returns:
         model: 読み込んだモデル（評価モード）
     """
+    if num_classes is None:
+        num_classes = NUM_CLASSES
+
     if device is None:
         device = get_device()
 
@@ -117,14 +120,19 @@ def predict_single_image(model, image_path, device=None, class_names=None):
     if device is None:
         device = get_device()
 
-    # クラス数を取得（ドロップアウトがある場合とない場合に対応）
-    classifier = model.model.classifier[1]
+    # クラス数を取得（モデル構造に依存しない方法）
+    classifier = model.model.classifier
     if isinstance(classifier, torch.nn.Sequential):
-        # ドロップアウト + Linear層の場合
         num_classes = classifier[-1].out_features
-    else:
-        # Linear層のみの場合
+    elif isinstance(classifier, torch.nn.Linear):
         num_classes = classifier.out_features
+    else:
+        # B0はclassifier[1]にSequentialまたはLinearがある
+        sub = classifier[1]
+        if isinstance(sub, torch.nn.Sequential):
+            num_classes = sub[-1].out_features
+        else:
+            num_classes = sub.out_features
 
     if class_names is None:
         class_names = [str(i) for i in range(num_classes)]

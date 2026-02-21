@@ -26,14 +26,26 @@ from src.avocado_ripeness.config import (  # noqa: E402
 from src.avocado_ripeness.utils import get_device  # noqa: E402
 
 
-# クラス名の定義（成熟度のラベル）
-CLASS_NAMES = {
+CLASS_NAMES_5 = {
     0: "未熟 (Unripe)",
     1: "やや未熟 (Slightly Unripe)",
     2: "適熟 (Ripe)",
     3: "やや過熟 (Slightly Overripe)",
     4: "過熟 (Overripe)"
 }
+
+CLASS_NAMES_3 = {
+    0: "未熟 (Unripe)",
+    1: "適熟 (Ripe)",
+    2: "過熟 (Overripe)"
+}
+
+
+def _get_class_names(num_classes):
+    """クラス数に応じたクラス名辞書を返す"""
+    if num_classes == 3:
+        return CLASS_NAMES_3
+    return CLASS_NAMES_5
 
 
 def print_prediction_result(result, image_path):
@@ -116,11 +128,12 @@ def main():
     if image_path.is_file():
         # 単一画像の推論
         print("\n単一画像の推論を実行します...")
+        class_names_dict = _get_class_names(args.num_classes)
         result = predict_single_image(
             model=model,
             image_path=image_path,
             device=device,
-            class_names=[CLASS_NAMES[i] for i in range(args.num_classes)]
+            class_names=[class_names_dict[i] for i in range(args.num_classes)]
         )
         print_prediction_result(result, image_path)
 
@@ -135,11 +148,12 @@ def main():
 
         print(f"  見つかった画像数: {len(image_files)}")
 
+        class_names_dict = _get_class_names(args.num_classes)
         results = predict_batch(
             model=model,
             image_paths=image_files,
             device=device,
-            class_names=[CLASS_NAMES[i] for i in range(args.num_classes)]
+            class_names=[class_names_dict[i] for i in range(args.num_classes)]
         )
 
         # 結果を表示
@@ -159,8 +173,9 @@ def main():
         for class_idx in range(args.num_classes):
             count = class_counts.get(class_idx, 0)
             percentage = (count / len(results)) * 100 if results else 0
+            class_names_dict = _get_class_names(args.num_classes)
             print(
-                f"  {class_idx}: {CLASS_NAMES[class_idx]:30s} {count:3d}枚 ({percentage:.1f}%)")
+                f"  {class_idx}: {class_names_dict[class_idx]:30s} {count:3d}枚 ({percentage:.1f}%)")
 
     else:
         print(f"エラー: {image_path} が見つかりません")
