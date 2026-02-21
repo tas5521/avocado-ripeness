@@ -30,7 +30,8 @@ from src.avocado_ripeness.config import (  # noqa: E402
     NUM_CLASSES,
     DROPOUT_RATE,
     BATCH_SIZE,
-    NUM_WORKERS
+    NUM_WORKERS,
+    CLASS_MODE
 )
 from src.avocado_ripeness.utils import get_device  # noqa: E402
 
@@ -127,7 +128,8 @@ def main():
         shuffle=False,
         transform=test_transform,
         num_workers=NUM_WORKERS,
-        num_classes=args.num_classes
+        num_classes=args.num_classes,
+        class_mode=CLASS_MODE
     )
 
     print(f"  テストデータセットサイズ: {len(test_dataloader.dataset)}")

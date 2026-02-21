@@ -114,7 +114,8 @@ def create_dataloader(
     transform=None,
     num_workers=0,
     num_classes=5,
-    use_oversampling=False
+    use_oversampling=False,
+    class_mode="select"
 ):
     """
     DataLoaderを作成する
@@ -127,12 +128,15 @@ def create_dataloader(
         num_workers (int): データ読み込みに使うプロセス数（デフォルト: 0）
         num_classes (int): 分類クラス数（5: 5段階、3: 3段階）
         use_oversampling (bool): オーバーサンプリングを使用するか
+        class_mode (str): 3段階の統合方法（"merge" or "select"）
 
     Returns:
         DataLoader: 作成されたDataLoader
     """
     # データセットを作成
-    dataset = AvocadoDataset(data_dir, transform=transform, num_classes=num_classes)
+    dataset = AvocadoDataset(
+        data_dir, transform=transform, num_classes=num_classes, class_mode=class_mode
+    )
 
     if use_oversampling:
         # WeightedRandomSamplerを使用（shuffleと併用不可）

@@ -28,6 +28,7 @@ def _pad_right(s, target_width):
         return s + ' ' * padding
     return s
 
+
 # プロジェクトルートをPythonパスに追加
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -37,7 +38,8 @@ from src.avocado_ripeness.config import (  # noqa: E402
     TRAIN_DIR,
     VALID_DIR,
     TEST_DIR,
-    NUM_CLASSES
+    NUM_CLASSES,
+    CLASS_MODE
 )
 from src.avocado_ripeness.utils import calculate_class_weights  # noqa: E402
 
@@ -75,7 +77,9 @@ def check_distribution(data_dir, split_name):
         return None
 
     # データセットを作成
-    dataset = AvocadoDataset(data_dir, transform=None, num_classes=NUM_CLASSES)
+    dataset = AvocadoDataset(
+        data_dir, transform=None, num_classes=NUM_CLASSES, class_mode=CLASS_MODE
+    )
 
     # クラスごとのデータ数をカウント
     class_counts = Counter(dataset.targets)
@@ -166,7 +170,6 @@ def main():
                 f" {test_count:>10} {total_count:>10}"
             )
 
-
     # クラス重みを表示（訓練データから計算）
     if train_dist:
         print(f"\n{'=' * 60}")
@@ -174,7 +177,9 @@ def main():
         print(f"{'=' * 60}")
         print("※ 少数クラスほど大きい重みになります\n")
 
-        train_dataset = AvocadoDataset(TRAIN_DIR, transform=None, num_classes=NUM_CLASSES)
+        train_dataset = AvocadoDataset(
+            TRAIN_DIR, transform=None, num_classes=NUM_CLASSES, class_mode=CLASS_MODE
+        )
         weights = calculate_class_weights(train_dataset, NUM_CLASSES)
 
         class_names = _get_class_names(NUM_CLASSES)

@@ -15,7 +15,8 @@ TEST_DIR = DATA_DIR / "test"
 
 # モデル設定
 NUM_CLASSES = 3  # アボカドの成熟度クラス数（3: 未熟/適熟/過熟、5: 5段階）
-MODEL_NAME = "efficientnet_b0"  # "efficientnet_b0", "efficientnet_lite0", "efficientnet_lite1"
+# "efficientnet_b0", "efficientnet_lite0", "efficientnet_lite1"
+MODEL_NAME = "efficientnet_lite0"
 PRETRAINED = True
 
 # 訓練設定
@@ -36,6 +37,9 @@ USE_CLASS_WEIGHTS = True  # 訓練データの分布に基づくクラス重み�
 
 # オーバーサンプリング設定
 USE_OVERSAMPLING = False  # 少数クラスのオーバーサンプリングを使用するか
+
+# 3段階分類の統合方法
+CLASS_MODE = "select"  # "merge": 全データ使用(1,2→未熟, 3→適熟, 4,5→過熟), "select": 1,3,5のみ使用
 
 # チェックポイント設定
 CHECKPOINT_DIR = Path("checkpoints")  # チェックポイント保存ディレクトリ
