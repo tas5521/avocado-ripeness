@@ -1,66 +1,64 @@
 # アボカド熟度判定
 
-**カメラ画像からアボカドの熟度を推定するモバイルアプリ**です。CNN で学習したモデルを端末上で動かし、**App Store で公開**しています。  
-本リポジトリは **AI モデルの学習・評価・モバイル向けエクスポート**をまとめた Python プロジェクトです（アプリの UI は別リポジトリ）。
-
+アボカドの熟度を推定するAIモデル作成用のリポジトリです。\
+学習・評価・モバイル向けエクスポートを行います。\
+[アプリのUIのリポジトリはこちら](https://github.com/tas5521/avocado-ripeness_app)
 
 ## 概要
 
-買い物や食事のタイミングで「食べ頃かどうか」を判断しづらい課題に対し、**撮影画像から熟度を推定する AI**を PyTorch で構築しました。**データの用意から学習・評価、オンデバイス用への変換までを一貫して実装**し、そのモデルをアプリに組み込んで**実ユーザーが使える形でストア公開**まで行っています。
+＜課題＞\
+買い物や食事の際、アボカドが「食べ頃かどうか」を判断しづらい。
+
+＜解決方法＞\
+スマホのカメラでアボカドを撮影し、熟度を推定するAIアプリを開発しました。
 
 
-## 特徴・強み
+## 特徴
 
-- **App Store で公開済み** — 実際にインストールして試せるプロダクトとして提供
-- **画像分類モデル（CNN）を開発** — 転移学習による学習パイプラインを構築
-- **モデル開発からデプロイ準備まで一貫** — 学習・テスト評価・ExecuTorch（`.pte`）への変換までを本リポジトリで管理
-- **オンデバイス推論** — モバイル向け形式への変換を想定したエクスポート手順を用意
-- **評価を可視化** — テストセットでの Accuracy に加え、混同行列・クラス別指標で振る舞いを確認可能
+- CNNによる画像分類: 転移学習による学習パイプラインを構築
+- 評価を可視化: Accuracy・混同行列で評価
+- オンデバイス推論: モバイル実行形式への変換
 
 
-## デモ（App Store）
+## App Store リンク
 
-- [アボカド熟度チェッカー](https://apps.apple.com/jp/app/%E3%82%A2%E3%83%9C%E3%82%AB%E3%83%89%E7%86%9F%E5%BA%A6%E3%83%81%E3%82%A7%E3%83%83%E3%82%AB%E3%83%BC/id6759849445)
+[アボカド熟度チェッカー](https://apps.apple.com/jp/app/%E3%82%A2%E3%83%9C%E3%82%AB%E3%83%89%E7%86%9F%E5%BA%A6%E3%83%81%E3%82%A7%E3%83%83%E3%82%AB%E3%83%BC/id6759849445)
 
 
 ## 技術スタック
 
 | 領域 | 技術 |
 |------|------|
-| **機械学習** | Python 3.10+, [PyTorch](https://pytorch.org/), torchvision, [timm](https://github.com/huggingface/pytorch-image-models)（EfficientNet 系の転移学習） |
-| **評価** | scikit-learn（混同行列・分類レポートなど） |
-| **オンデバイス推論** | [ExecuTorch](https://pytorch.org/executorch/)（`.pte` へのエクスポート。`pip install -e ".[mobile]"`） |
-| **モバイルアプリ** | Flutter / Dart（**本リポジトリ外**。カメラ・表示はアプリ側で実装） |
-
-開発用（テスト・Lint・整形）は `pip install -e ".[dev]"` で導入可能です（pytest など）。
+| 機械学習 | Python3, PyTorch, torchvision, timm |
+| 評価 | scikit-learn（混同行列・分類レポートなど） |
+| オンデバイス推論 | ExecuTorch |
 
 
-## AI・機械学習のポイント（詳細）
+## AI・機械学習の詳細
 
-- **転移学習**: ImageNet 事前学習済みバックボーン（例: EfficientNet-B0 / EfficientNet-Lite）による画像分類。[`src/avocado_ripeness/config.py`](src/avocado_ripeness/config.py) の `MODEL_NAME` で切り替え可能です。
-- **学習〜評価のパイプライン**: 訓練・バリデーション・テストで学習し、テストでは損失・Accuracy に加え **混同行列・クラス別 Precision / Recall** を出力（`scripts/evaluate_test.py`）。
-- **データとラベル設計**: 元データは 5 段階のフォルダ分類。デフォルトでは **3 クラス（未熟 / 適熟 / 過熟）** とし、`CLASS_MODE` で **フォルダ 1・3・5 のみを使う「select」** など、統合方針を選べます。
-- **クラス不均衡への対応**: 訓練分布に基づく **クラス重み付き CrossEntropyLoss**（`USE_CLASS_WEIGHTS`）を利用可能です。
-- **モバイル向けエクスポート**: 学習済みチェックポイントから **ExecuTorch（`.pte`）** へ変換（`scripts/export_to_executorch.py`）。推論時の前処理は **224×224 + ImageNet 平均・標準偏差の正規化** を学習時のバリデーションと揃える想定です。
-- **実運用の観点**: 撮影環境（明るさ・照明）により見え方が変わりやすく、モデル出力に影響し得ます。データ拡張やアプリ側の前処理は継続的な改善ポイントです。
+- 転移学習: ImageNet事前学習済みモデル（EfficientNet）をbackboneとして使用。
+- 学習〜評価のパイプライン: 訓練・バリデーション・テストで学習し、テストでは損失・Accuracy、混同行列・クラス別Precision/Recallを出力（`scripts/evaluate_test.py`）。
+- データとラベル設計: 元のデータセットは5段階（未熟/やや未熟/適熟/やや過熟/過熟）のフォルダ分類。デフォルトでは3クラス（未熟/適熟/過熟）とし、`CLASS_MODE`でフォルダ1・3・5のみを使う「select」などを選択可能。
+- クラス不均衡への対応: 訓練データの分布に基づくクラス重み付きCrossEntropyLossを利用可能（`USE_CLASS_WEIGHTS`）。
+- モバイル実行形式エクスポート: 学習済みチェックポイントからExecuTorch（`.pte`）へ変換（`scripts/export_to_executorch.py`）。
+- 実運用の観点: 撮影環境（明るさ・照明）により見え方が変わりやすく、モデル出力に影響する可能性があります。データ拡張やアプリ側の前処理は継続的な改善が必要なポイントです。
 
 
 ## 今後の課題
 
-- ラベル定義と人間の感覚のギャップの整理
-- **軽量モデルと精度のトレードオフ**の検証（モバイル向け）
-- ストア公開後のフィードバックに基づく反復改善
+- モバイル向け軽量モデルの利用と、軽量化と精度のトレードオフの検証
+- ストアのフィードバックに基づく改善
 
 
 ## 開発者向け
 
 ### データセット
 
-Mendeley Data の **'Hass' Avocado Ripening Photographic Dataset** を利用しています。
+Mendeley Dataの'Hass' Avocado Ripening Photographic Datasetを利用しています。
 
 - [提供元・ダウンロード（Mendeley Data）](https://data.mendeley.com/datasets/3xd9n945v8/1)
 
-データは `data/processed/avocado_ripeness/` に `train` / `valid` / `test` として配置する想定です（前処理済み分割は別途用意）。
+元データをdata/rawに配置し、`split_dataset.py`を実行すると、`data/processed/avocado_ripeness/` に `train` / `valid` / `test` として配置されます。
 
 ### 環境
 
@@ -96,7 +94,9 @@ ExecuTorch（`.pte`）への変換:
 python scripts/export_to_executorch.py
 ```
 
-**クラス数と出力次元**: 現在の設定では `NUM_CLASSES = 3`（3 段階）です。エクスポート時は **チェックポイントと同じクラス数** になるよう `--num-classes` を指定してください。
+クラス数と出力次元:\
+現在の設定では `NUM_CLASSES = 3`（3 段階）です。\
+エクスポートする時はチェックポイントと同じクラス数になるよう`--num-classes`を指定します。
 
 ```bash
 python scripts/export_to_executorch.py \
@@ -107,9 +107,12 @@ python scripts/export_to_executorch.py \
   --image-size 224
 ```
 
-**モバイル推論時の入力**: テンソル形状 `[1, 3, 224, 224]`。正規化は mean=`[0.485, 0.456, 0.406]`, std=`[0.229, 0.224, 0.225]`（ImageNet 統計）。出力は **バッチ × クラス数** の logits（例: 3 クラスなら `[1, 3]`）。
+モバイル推論時の入力:\
+入力テンソル形状: `[1, 3, 224, 224]（Batch, Channel, Height, Width）`\
+正規化は、mean=`[0.485, 0.456, 0.406]`, std=`[0.229, 0.224, 0.225]`（ImageNet 統計）。\
+出力はバッチ×クラス数のlogits。
 
-**3 クラス時のラベル対応（例）**
+3 クラス時のラベル対応（例）
 
 | インデックス | 意味（例） |
 |--------------|------------|
@@ -122,4 +125,5 @@ python scripts/export_to_executorch.py \
 
 ## ライセンス
 
-本プロジェクトのコードは [Apache-2.0](LICENSE) とします（`pyproject.toml` の記載に準拠）。データセットの利用条件は提供元のライセンスに従ってください。
+本プロジェクトのコードは [Apache-2.0](LICENSE) とします（`pyproject.toml` の記載に準拠）。\
+データセットの利用条件は提供元のライセンスに従ってください。
