@@ -39,7 +39,7 @@
 - **出所**: 自前収集ではなく、公開データセット**Mendeley「Hass」Avocado Ripening Photographic Dataset**を利用しています。  
   - [提供元（Mendeley Data）](https://data.mendeley.com/datasets/3xd9n945v8/1)
 - **分割**: 元データを`data/raw`に置き、[`scripts/split_dataset.py`](scripts/split_dataset.py)で`data/processed/avocado_ripeness/`以下にtrain / valid / testとして分割されます。
-- **ラベル**: 元は5段階（フォルダ 1〜5, 未熟 / やや未熟 / 適熟 / やや過熟 / 過熟）。学習時は[`config.py`](src/avocado_ripeness/config.py)の`NUM_CLASSES`と`CLASS_MODE`により、 **3クラス化** や **フォルダ1・3・5のみを使う`select`** など、統合方針を選べます。
+- **ラベル**: 元は5段階（フォルダ 1〜5, 未熟 / やや未熟 / 適熟 / やや過熟 / 過熟）。学習時は[`config.py`](src/avocado_ripeness/config.py)の`NUM_CLASSES`と`CLASS_MODE`により、 **3クラス化** や **フォルダ1・3・5のみを使う`select`** など、統合方針を選べます。5クラス分類ではクラス間の差異が小さく、誤分類が増加したため、実用性を考慮し最終的に3クラス（未熟 / 適熟 / 過熟）にした。
 - **課題**:
   - **撮影条件**（明るさや背景など）のばらつきは、見た目とラベルの対応関係を歪める。
 
