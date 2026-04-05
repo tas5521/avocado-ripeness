@@ -141,3 +141,88 @@ python scripts/evaluate_robustness.py --presets clean brightness_0.75
 **限界**: 摂動は合成であり、実機の「暗い部屋」とは一致しない。別の強さ・種類の摂動や実データでの確認が望ましい。
 
 
+## 7. 改善
+
+- **試したこと・できること（設定例）**:
+  - **クラス重み付け**（`USE_CLASS_WEIGHTS`）、**オーバーサンプリング**（`USE_OVERSAMPLING`）
+  - **3クラス化**と`CLASS_MODE`（`merge` / `select`）
+  - **モデル切替**（`MODEL_NAME`）、データ拡張の強弱（`dataloader.py` 内のパラメータ）
+
+
+## 8. デプロイ（モバイル実装・軽量化・推論）
+
+- **モバイルアプリ**: Flutter実装は [別リポジトリ](https://github.com/tas5521/avocado-ripeness_app)。本リポジトリは 学習済み重みの生成と `.pte` エクスポートがメインです。
+- **軽量化**: EfficientNet **Lite** 系を採用。
+- **推論**:
+  - 本リポジトリのエクスポートモデル出力は**logits**（各クラスの生スコア）。確率を使用する場合は**アプリ側でsoftmax関数を適用する想定です（本リポジトリの`predict.py`でも表示前にsoftmaxを使用）。
+  - 入力テンソル形状は **`[1, 3, 224, 224]`（NCHW: Batch, Channel, Height, Width）**、正規化はImageNet統計（付録参照）。
+
+
+## 9. 今後の展望
+
+- 撮影条件の多様性をカバーするデータ・拡張の見直し
+- 軽量モデルと精度のトレードオフの整理（モバイル実機での評価）
+- ラベル定義と利用シーンのすり合わせ
+- ストアレビュー等のフィードバックを反映した反復改善
+
+---
+
+## 付録：開発者向け
+
+### 環境
+
+```bash
+pip install -e .
+pip install -e ".[mobile]"   # ExecuTorch エクスポート用（任意）
+pip install -e ".[dev]"     # テスト・Lint 用（任意）
+```
+
+### 主なコマンド
+
+訓練（[`src/avocado_ripeness/config.py`](src/avocado_ripeness/config.py) を使用）:
+
+```bash
+python scripts/run_train.py
+```
+
+推論:
+
+```bash
+python scripts/run_predict.py <画像ファイルまたはディレクトリのパス>
+```
+
+ExecuTorch（`.pte`）への変換:
+
+```bash
+python scripts/export_to_executorch.py
+```
+
+エクスポート例（クラス数はチェックポイントと一致させる）:
+
+```bash
+python scripts/export_to_executorch.py \
+  --checkpoint checkpoints/best_model.pth \
+  --output models/avocado_ripeness.pte \
+  --num-classes 3 \
+  --dropout-rate 0.3 \
+  --image-size 224
+```
+
+現在の [`config.py`](src/avocado_ripeness/config.py) では`NUM_CLASSES = 3`を想定しています。5段階で学習する場合は`NUM_CLASSES`とデータラベルを揃えてください。
+
+**モバイル推論時の入出力**
+
+- 入力: `[1, 3, 224, 224]`、mean=`[0.485, 0.456, 0.406]`, std=`[0.229, 0.224, 0.225]`
+- 出力: logits。形状は `[1, クラス数]`（例: 3 クラスなら `[1, 3]`）
+
+**3クラス時のラベル対応（例）**
+
+| インデックス | 意味（例） |
+|--------------|------------|
+| 0 | 未熟 |
+| 1 | 適熟 |
+| 2 | 過熟 |
+
+### ライセンス
+
+本プロジェクトのコードは [Apache-2.0](LICENSE) とします（`pyproject.toml` の記載に準拠）。データセットの利用条件は提供元のライセンスに従ってください。
