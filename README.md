@@ -71,6 +71,15 @@
 python scripts/evaluate_test.py
 ```
 
+- **摂動下での比較（任意）**: 通常テストと同じラベルで、**明るさ・コントラスト・回転・左右反転**などの摂動を画像に加えたうえで Accuracyを測り、`best_model.pth`（拡張なし学習）と `best_model_augumented.pth`（拡張あり学習）を並べて比較できます。実運用の撮影ばらつきのシミュレーション用（摂動の有無で「頑健性」の目安を見る）。
+
+```bash
+python scripts/evaluate_robustness.py
+# 一部の preset のみ: python scripts/evaluate_robustness.py --presets clean brightness_0.75 rotate_10
+```
+
+  利用可能な preset 名は [`src/avocado_ripeness/robustness.py`](src/avocado_ripeness/robustness.py) の `list_perturbation_presets()` を参照してください。
+
 - **結果（実行例）**: `checkpoints/best_model.pth`・テストデータ 1290 件・`python scripts/evaluate_test.py` 実行時のログより。チェックポイントや設定が変われば数値も変わります。
 
   - **テスト損失** 0.1090｜**Accuracy** 0.9527（95.27%）
