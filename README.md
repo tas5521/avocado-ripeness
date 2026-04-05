@@ -1,129 +1,97 @@
 # アボカド熟度判定
 
-アボカドの熟度を画像から推定するAIモデルのリポジトリです。\
-学習・評価・モバイル向けエクスポートまで一貫して実装しています。\
-[アプリのUIのリポジトリはこちら](https://github.com/tas5521/avocado-ripeness_app)
+カメラ画像からアボカドの熟度を推定するための**画像分類モデル（CNN）**を学習・評価し、モバイル向けにエクスポートするPythonリポジトリです。
 
-CNNと転移学習でモデルを開発し、モバイルアプリに組み込み、App Storeで公開しています。\
-App Store: [アボカド熟度チェッカー](https://apps.apple.com/jp/app/%E3%82%A2%E3%83%9C%E3%82%AB%E3%83%89%E7%86%9F%E5%BA%A6%E3%83%81%E3%82%A7%E3%83%83%E3%82%AB%E3%83%BC/id6759849445)
+- **モバイルアプリ（UI）**: [avocado-ripeness_app](https://github.com/tas5521/avocado-ripeness_app)
+- **App Store**: [アボカド熟度チェッカー](https://apps.apple.com/jp/app/%E3%82%A2%E3%83%9C%E3%82%AB%E3%83%89%E7%86%9F%E5%BA%A6%E3%83%81%E3%82%A7%E3%83%83%E3%82%AB%E3%83%BC/id6759849445)
 
 
-## 概要
+## 1. 概要（問題定義・背景）
 
-＜課題＞\
-買い物や食事の際、アボカドが「食べ頃かどうか」を判断しづらい。
-
-＜解決方法＞\
-スマホのカメラでアボカドを撮影し、熟度を推定するAIアプリを開発しました。
-
-
-## 特徴
-
-- CNNによる画像分類: 転移学習による学習パイプラインを構築
-- 評価を可視化: Accuracy・混同行列で評価
-- オンデバイス推論: モバイル実行形式への変換
-- App Store公開: 実際にユーザーが利用可能な形で提供
+- **何を解くか**: 買い物や食事のタイミングで、アボカドが「食べ頃に近いか」を画像から推定し、判断を助けること。
+- **なぜ重要か**: 食べ頃を見誤ると、食品ロス、無駄な購入、食感の不満などにつながりやすいため。
+- **ゴール**:
+  - **モデル面**: テストセットで損失・Accuracy、混同行列・クラス別指標で振る舞いを確認できること。
+  - **プロダクト面**: 学習済みモデルをモバイル端末に載せ替え可能な形にし、**オンデバイス推論**を前提にしたアプリで利用できること。
 
 
-## 技術スタック
+## 2. アプローチ（全体戦略）
 
-| 領域 | 技術 |
-|------|------|
-| 機械学習 | Python3, PyTorch, torchvision, timm |
+- **方針**: 
+  - ImageNet事前学習済みバックボーンとして用いた**転移学習**により画像分類モデルを構築する。
+  - **軽量〜中規模なモデル**を選択する。
+  - モバイル向けには**ExecuTorch**で`.pte`にエクスポートする。
+- **理由**:
+  - 事前学習済みモデルをバックボーンにすることで、ゼロから大規模に学習する必要がなくなり、開発時間・コストを削減できる。
+  - 軽量〜中規模のモデルを用いることで、モバイル端末でのリアルタイム推論が可能になる。
+  - エッジ向けでより高速・軽量なExecuTorchを採用する（従来のTorchScriptはPyTorchで公式で非推奨となっている）。
+
+
+**主要な技術**
+
+| 言語 | Python3.10+ | 
+| 機械学習 | PyTorch, torchvision（EfficientNet-B0）, timm（EfficientNet-Lite0） |
 | 評価 | scikit-learn（混同行列・分類レポートなど） |
-| オンデバイス推論 | ExecuTorch |
+| オンデバイス推論 | ExecuTorch（`.pte` への変換） |
 
 
-## AI・機械学習の詳細
+## 3. データ
 
-- 転移学習: ImageNet事前学習済みモデル（EfficientNet）をbackboneとして使用。
-- 学習〜評価のパイプライン: 訓練・バリデーション・テストで学習し、テストでは損失・Accuracy、混同行列・クラス別Precision/Recallを出力（`scripts/evaluate_test.py`）。
-- データとラベル設計: 元のデータセットは5段階（未熟/やや未熟/適熟/やや過熟/過熟）のフォルダ分類。デフォルトでは3クラス（未熟/適熟/過熟）とし、`CLASS_MODE`でフォルダ1・3・5のみを使う「select」などを選択可能。
-- クラス不均衡への対応: 訓練データの分布に基づくクラス重み付きCrossEntropyLossを利用可能（`USE_CLASS_WEIGHTS`）。
-- モバイル実行形式エクスポート: 学習済みチェックポイントからExecuTorch（`.pte`）へ変換（`scripts/export_to_executorch.py`）。
-- 実運用の観点: 撮影環境（明るさ・照明）により見え方が変わりやすく、モデル出力に影響する可能性があります。データ拡張やアプリ側の前処理は継続的な改善が必要なポイントです。
-
-
-## 今後の課題
-
-- モバイル向け軽量モデルの利用と、軽量化と精度のトレードオフの検証
-- ストアのフィードバックに基づく改善
+- **出所**: 自前収集ではなく、公開データセット**Mendeley「Hass」Avocado Ripening Photographic Dataset**を利用しています。  
+  - [提供元（Mendeley Data）](https://data.mendeley.com/datasets/3xd9n945v8/1)
+- **分割**: 元データを`data/raw`に置き、[`scripts/split_dataset.py`](scripts/split_dataset.py)で`data/processed/avocado_ripeness/`以下にtrain / valid / testとして分割されます。
+- **ラベル**: 元は5段階（フォルダ 1〜5, 未熟 / やや未熟 / 適熟 / やや過熟 / 過熟）。学習時は[`config.py`](src/avocado_ripeness/config.py)の`NUM_CLASSES`と`CLASS_MODE`により、**3クラス化**や**フォルダ1・3・5のみを使う`select`**など、統合方針を選べます。
+- **課題**:
+  - **撮影条件**（明るさや背景など）のばらつきは、見た目とラベルの対応関係を歪める。
 
 
-## 開発者向け
+## 4. 手法（実務フロー）
 
-### データセット
+- **データ理解（EDA）**: `scripts/check_data_distribution.py`でtrain・valid・testのクラス別件数やクラス重みの目安を確認。
+- **前処理・拡張**（訓練時、[`dataloader.py`](src/avocado_ripeness/dataloader.py)）:
+  - リサイズ・ランダムクロップ、水平反転、小さな回転、明るさ・コントラスト等の変化、ImageNetの平均・標準偏差で正規化。
+  - validとtestは拡張なしで、リサイズと正規化。
+- **モデル選定**: **EfficientNet-B0**または**EfficientNet-Lite0**を`MODEL_NAME`で選択。
+  - EfficientNetを選択した理由
+    - 軽量でありながら精度が高い
+    - モバイル推論に適している
+    - 事前学習済みモデルが利用可能
+- **訓練**（[`scripts/run_train.py`](scripts/run_train.py)、設定は [`config.py`](src/avocado_ripeness/config.py)）:
+  - 損失関数: `CrossEntropyLoss`（`USE_CLASS_WEIGHTS`で、クラス重み付け選択可能）
+  - 最適化: Adam、学習率スケジューラ（`ReduceLROnPlateau`）、Early stopping
+  - `USE_OVERSAMPLING`で`WeightedRandomSampler`によるオーバーサンプリングが可能（任意, デフォルトでOFF）
 
-Mendeley Dataの'Hass' Avocado Ripening Photographic Datasetを利用しています。
 
-- [提供元・ダウンロード（Mendeley Data）](https://data.mendeley.com/datasets/3xd9n945v8/1)
+## 5. 評価
 
-元データをdata/rawに配置し、`split_dataset.py`を実行すると、`data/processed/avocado_ripeness/` に `train` / `valid` / `test` として配置されます。
-
-### 環境
-
-```bash
-pip install -e .
-pip install -e ".[mobile]"   # ExecuTorch エクスポート用（任意）
-pip install -e ".[dev]"     # テスト・Lint 用（任意）
-```
-
-### 主なコマンド
-
-訓練（[`src/avocado_ripeness/config.py`](src/avocado_ripeness/config.py) の設定を使用）:
-
-```bash
-python scripts/run_train.py
-```
-
-単一画像・ディレクトリの推論:
-
-```bash
-python scripts/run_predict.py <画像ファイルまたはディレクトリのパス>
-```
-
-テストセット評価:
+- **指標**: テスト損失、**Accuracy**、**混同行列**、クラス別 **Precision / Recall / F1**（scikit-learn）。
+- **実行方法**: 最新の数値は環境・チェックポイントに依存するため、次で再現してください。
 
 ```bash
 python scripts/evaluate_test.py
 ```
 
-ExecuTorch（`.pte`）への変換:
+- **結果（実行例）**: `checkpoints/best_model.pth`・テストデータ 1290 件・`python scripts/evaluate_test.py` 実行時のログより。チェックポイントや設定が変われば数値も変わります。
 
-```bash
-python scripts/export_to_executorch.py
-```
+  - **テスト損失** 0.1090｜**Accuracy** 0.9527（95.27%）
 
-クラス数と出力次元:\
-現在の設定では `NUM_CLASSES = 3`（3 段階）です。\
-エクスポートする時はチェックポイントと同じクラス数になるよう`--num-classes`を指定します。
+  **混同行列**（行＝正解、列＝予測）
 
-```bash
-python scripts/export_to_executorch.py \
-  --checkpoint checkpoints/best_model.pth \
-  --output models/avocado_ripeness.pte \
-  --num-classes 3 \
-  --dropout-rate 0.3 \
-  --image-size 224
-```
+  | 正解＼予測 | 未熟 | 適熟 | 過熟 | 合計 |
+  |------------|-----:|-----:|-----:|-----:|
+  | 未熟 | 479 | 3 | 0 | 482 |
+  | 適熟 | 4 | 395 | 17 | 416 |
+  | 過熟 | 0 | 37 | 355 | 392 |
+  | **合計** | 483 | 435 | 372 | 1290 |
 
-モバイル推論時の入力:\
-入力テンソル形状: `[1, 3, 224, 224]（Batch, Channel, Height, Width）`\
-正規化は、mean=`[0.485, 0.456, 0.406]`, std=`[0.229, 0.224, 0.225]`（ImageNet 統計）。\
-出力はバッチ×クラス数のlogits。
+  **クラス別** Precision / Recall / F1-score（Support）
 
-3 クラス時のラベル対応（例）
-
-| インデックス | 意味（例） |
-|--------------|------------|
-| 0 | 未熟 |
-| 1 | 適熟 |
-| 2 | 過熟 |
-
-5 段階で学習する場合は `NUM_CLASSES = 5` およびデータセット側のラベル設計に合わせて読み替えてください。
+  | クラス | Precision | Recall | F1-score | Support |
+  |--------|----------:|-------:|---------:|--------:|
+  | 未熟 | 0.9917 | 0.9938 | 0.9927 | 482 |
+  | 適熟 | 0.9080 | 0.9495 | 0.9283 | 416 |
+  | 過熟 | 0.9543 | 0.9056 | 0.9293 | 392 |
+  | macro 平均 | 0.9514 | 0.9496 | 0.9501 | 1290 |
+  | weighted 平均 | 0.9534 | 0.9527 | 0.9527 | 1290 |
 
 
-## ライセンス
-
-本プロジェクトのコードは [Apache-2.0](LICENSE) とします（`pyproject.toml` の記載に準拠）。\
-データセットの利用条件は提供元のライセンスに従ってください。
