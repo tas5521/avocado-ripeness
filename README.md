@@ -116,7 +116,7 @@ python scripts/evaluate_robustness.py
 python scripts/evaluate_robustness.py --presets clean brightness_0.75
 ```
 
-### 結果の一例（同一テスト 1290 件・例示用）
+### 結果の一例（同一テスト 1290件）
 
 チェックポイント例: `checkpoints/best_model.pth`（拡張なし学習）と `checkpoints/best_model_augumented.pth`（拡張あり学習）。環境・シード・再学習で数値は変わり得ます。
 
