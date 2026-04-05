@@ -29,7 +29,7 @@ NUM_WORKERS = 2  # データ読み込みの並列処理数（2-4が推奨、MPS�
 IMAGE_SIZE = 224  # 入力画像サイズ（224x224）
 
 # 過学習対策設定
-USE_DATA_AUGMENTATION = True  # データ拡張を使用するか（デフォルト: True）
+USE_DATA_AUGMENTATION = False  # データ拡張を使用するか（デフォルト: True）
 DROPOUT_RATE = 0.3  # ドロップアウト率（0.0-1.0、0.0で無効）
 
 # クラス重み付け設定
